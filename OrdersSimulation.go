@@ -71,11 +71,15 @@ func main() {
 			time.Sleep(time.Millisecond * 500)
 			orderComing <- order
 		}
+
+		// Post an empty ID order indicate all orders are posted
+		orderComing <- Order{ID: ""}
 	}()
 
 	ticker := time.NewTicker(time.Second)
 
 	var ordersOnShelves []Order
+	allOrdersPosted := false
 
 	hotAvailable := 10
 	coldAvailable := 10
@@ -85,6 +89,11 @@ func main() {
 	for {
 		select {
 		case order := <-orderComing:
+
+			if len(order.ID) == 0 {
+				allOrdersPosted = true
+				break
+			}
 			// fmt.Println(order)
 			if order.Temp != "hot" && order.Temp != "cold" && order.Temp != "frozen" {
 				log.Printf("Invalid Temp in %v\n", order)
@@ -173,26 +182,35 @@ func main() {
 
 		case <-ticker.C:
 			// fmt.Println("Ticker")
-			i := 0
-			for _, order := range ordersOnShelves {
 
-				var shelfDecayModifier float64
-				if order.OnShelf == Overflow {
-					shelfDecayModifier = 2
-				} else {
-					shelfDecayModifier = 1
+			if len(ordersOnShelves) > 0 {
+				i := 0
+				for _, order := range ordersOnShelves {
+
+					var shelfDecayModifier float64
+					if order.OnShelf == Overflow {
+						shelfDecayModifier = 2
+					} else {
+						shelfDecayModifier = 1
+					}
+
+					order.ShelfLife = order.ShelfLife - order.DecayRate*shelfDecayModifier
+					if order.ShelfLife > 0 {
+						ordersOnShelves[i] = order
+						i++
+					} else {
+						fmt.Printf("[%v] is discarded because of EXPIRE.\n", order)
+					}
 				}
 
-				order.ShelfLife = order.ShelfLife - order.DecayRate*shelfDecayModifier
-				if order.ShelfLife > 0 {
-					ordersOnShelves[i] = order
-					i++
-				} else {
-					fmt.Printf("[%v] is discarded because of EXPIRE.\n", order)
+				if i < len(ordersOnShelves) {
+
+					ordersOnShelves = ordersOnShelves[:i]
 				}
+			} else if allOrdersPosted {
+				fmt.Println("Done")
+				return
 			}
-
-			ordersOnShelves = ordersOnShelves[:i]
 		}
 	}
 
