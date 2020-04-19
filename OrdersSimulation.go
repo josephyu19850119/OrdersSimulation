@@ -102,22 +102,28 @@ func main() {
 				log.Printf("Invalid Temp in %v\n", order)
 				break
 			}
-			// ordersOnShelves = append(ordersOnShelves, order)
+
 			ordersOnShelvesMuxtex.Lock()
 
 			if order.Temp == "hot" && hotAvailable > 0 {
 				hotAvailable--
 				order.OnShelf = Hot
+				ordersOnShelves = append(ordersOnShelves, order)
 			} else if order.Temp == "cold" && coldAvailable > 0 {
 				coldAvailable--
 				order.OnShelf = Cold
+				ordersOnShelves = append(ordersOnShelves, order)
 			} else if order.Temp == "frozen" && frozenAvailable > 0 {
 				frozenAvailable--
 				order.OnShelf = Frozen
+				ordersOnShelves = append(ordersOnShelves, order)
 			} else if overflowAvailable > 0 {
 				overflowAvailable--
 				order.OnShelf = Overflow
+				ordersOnShelves = append(ordersOnShelves, order)
 			} else {
+				order.OnShelf = Overflow
+
 				haveToDiscard := hotAvailable == 0 && coldAvailable == 0 && frozenAvailable == 0
 				indexToRemoveFromOverflow := -1
 				minShelfLife := math.MaxFloat64
@@ -150,15 +156,14 @@ func main() {
 						frozenAvailable++
 					}
 
-					// overflowAvailable unchanged
 					ordersOnShelves = append(ordersOnShelves, order)
 				}
 
 				// Whatever move an long-wait order to single-temperature from overflow shelf or have to just discard it,
 				// overflowAvailable unchanged!!!
-
-				ordersOnShelvesMuxtex.Unlock()
 			}
+
+			ordersOnShelvesMuxtex.Unlock()
 
 		case <-courierComing:
 			// fmt.Println("Courier coming!")
