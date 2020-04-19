@@ -20,7 +20,16 @@ const (
 	Overflow
 )
 
-func main() {
+type Order struct {
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Temp      string  `json:"temp"`
+	ShelfLife float64 `json:"shelfLife"`
+	DecayRate float64 `json:"decayRate"`
+	OnShelf   int
+}
+
+func LoadThenPostOrders(orderComing chan Order, ordersTotality *int) {
 	ordersPostedRate := flag.Int("orders-posted-rate", 2, "Orders are posted to kichen rate per second")
 	ordersFilePath := flag.String("orders-file-path", "orders.json", "Path of orders file in json")
 
@@ -31,16 +40,8 @@ func main() {
 	postInterval := time.Duration(1000 / *ordersPostedRate)
 	log.Printf("Order posted interval: %v\n", postInterval)
 
-	type Order struct {
-		ID        string  `json:"id"`
-		Name      string  `json:"name"`
-		Temp      string  `json:"temp"`
-		ShelfLife float64 `json:"shelfLife"`
-		DecayRate float64 `json:"decayRate"`
-		OnShelf   int
-	}
-
 	ordersFile, err := os.Open(*ordersFilePath)
+	defer ordersFile.Close()
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -56,39 +57,37 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+	for _, order := range orders {
+		time.Sleep(time.Millisecond * postInterval)
+		orderComing <- order
+		(*ordersTotality)++
+	}
 
-	// fmt.Println(orders)
+	// Post an empty ID order indicate all orders are posted
+	orderComing <- Order{ID: ""}
+}
+
+func SendCourier(courierComing chan bool) {
 
 	rand.Seed(time.Now().UnixNano())
 
 	courierIntervalLower := 2
 	courierIntervalUpper := 6
+	for {
+		interval := time.Duration(courierIntervalLower + rand.Intn(courierIntervalUpper-courierIntervalLower+1))
+		time.Sleep(interval * time.Second)
 
-	courierComing := make(chan bool)
-
-	go func() {
-		for {
-			interval := time.Duration(courierIntervalLower + rand.Intn(courierIntervalUpper-courierIntervalLower+1))
-			time.Sleep(interval * time.Second)
-
-			courierComing <- true
-		}
-	}()
+		courierComing <- true
+	}
+}
+func main() {
 
 	orderComing := make(chan Order)
-
 	ordersTotality := 0
-	go func() {
+	go LoadThenPostOrders(orderComing, &ordersTotality)
 
-		for _, order := range orders {
-			time.Sleep(time.Millisecond * postInterval)
-			orderComing <- order
-			ordersTotality++
-		}
-
-		// Post an empty ID order indicate all orders are posted
-		orderComing <- Order{ID: ""}
-	}()
+	courierComing := make(chan bool)
+	go SendCourier(courierComing)
 
 	ticker := time.NewTicker(time.Second)
 
