@@ -13,11 +13,13 @@ import (
 	"time"
 )
 
+type shelfType int
+
 const (
-	Hot = iota
-	Cold
-	Frozen
-	Overflow
+	hotShelf shelfType = iota
+	coldShelf
+	frozenShelf
+	overflowShelf
 )
 
 type Order struct {
@@ -26,7 +28,7 @@ type Order struct {
 	Temp      string  `json:"temp"`
 	ShelfLife float64 `json:"shelfLife"`
 	DecayRate float64 `json:"decayRate"`
-	OnShelf   int
+	OnShelf   shelfType
 }
 
 func LoadThenPostOrders(orderComing chan Order, ordersTotality *int) {
@@ -80,6 +82,7 @@ func SendCourier(courierComing chan bool) {
 		courierComing <- true
 	}
 }
+
 func main() {
 
 	orderComing := make(chan Order)
@@ -123,29 +126,29 @@ func main() {
 
 			if order.Temp == "hot" && hotAvailable > 0 {
 				hotAvailable--
-				order.OnShelf = Hot
+				order.OnShelf = hotShelf
 				ordersOnShelves = append(ordersOnShelves, order)
 			} else if order.Temp == "cold" && coldAvailable > 0 {
 				coldAvailable--
-				order.OnShelf = Cold
+				order.OnShelf = coldShelf
 				ordersOnShelves = append(ordersOnShelves, order)
 			} else if order.Temp == "frozen" && frozenAvailable > 0 {
 				frozenAvailable--
-				order.OnShelf = Frozen
+				order.OnShelf = frozenShelf
 				ordersOnShelves = append(ordersOnShelves, order)
 			} else if overflowAvailable > 0 {
 				overflowAvailable--
-				order.OnShelf = Overflow
+				order.OnShelf = overflowShelf
 				ordersOnShelves = append(ordersOnShelves, order)
 			} else {
-				order.OnShelf = Overflow
+				order.OnShelf = overflowShelf
 
 				indexMoveToSpecialShelf := -1
 				indexRemoved := -1
 				minShelfLifeToMove := math.MaxFloat64
 				minShelfLifeToRemove := math.MaxFloat64
 				for i, orderOnShelf := range ordersOnShelves {
-					if orderOnShelf.OnShelf == Overflow {
+					if orderOnShelf.OnShelf == overflowShelf {
 
 						if orderOnShelf.ShelfLife < minShelfLifeToMove {
 							if (orderOnShelf.Temp == "hot" && hotAvailable > 0) ||
@@ -171,13 +174,13 @@ func main() {
 				} else {
 					switch ordersOnShelves[indexMoveToSpecialShelf].Temp {
 					case "hot":
-						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = Hot
+						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = hotShelf
 						hotAvailable++
 					case "cold":
-						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = Cold
+						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = coldShelf
 						coldAvailable++
 					case "frozen":
-						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = Frozen
+						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = frozenShelf
 						frozenAvailable++
 					}
 
@@ -207,13 +210,13 @@ func main() {
 
 				fmt.Printf("Courier take out order: %v\n", ordersOnShelves[minShelfLifeIndex])
 				switch ordersOnShelves[minShelfLifeIndex].OnShelf {
-				case Hot:
+				case hotShelf:
 					hotAvailable--
-				case Cold:
+				case coldShelf:
 					coldAvailable--
-				case Frozen:
+				case frozenShelf:
 					frozenAvailable--
-				case Overflow:
+				case overflowShelf:
 					overflowAvailable--
 				}
 
@@ -240,7 +243,7 @@ func main() {
 				for _, order := range ordersOnShelves {
 
 					var shelfDecayModifier float64
-					if order.OnShelf == Overflow {
+					if order.OnShelf == overflowShelf {
 						shelfDecayModifier = 2
 					} else {
 						shelfDecayModifier = 1
@@ -268,5 +271,4 @@ func main() {
 			}
 		}
 	}
-
 }
