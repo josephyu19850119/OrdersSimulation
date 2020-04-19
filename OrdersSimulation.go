@@ -26,7 +26,7 @@ const (
 	overflowShelf
 )
 
-type Order struct {
+type orderInfo struct {
 	ID        string  `json:"id"`
 	Name      string  `json:"name"`
 	Temp      string  `json:"temp"`
@@ -35,7 +35,7 @@ type Order struct {
 	OnShelf   shelfType
 }
 
-func LoadThenPostOrders(orderComing chan Order, ordersTotality *int) {
+func loadThenPostOrders(orderComing chan orderInfo, ordersTotality *int) {
 	ordersPostedRate := flag.Int("orders-posted-rate", 2, "Orders are posted to kichen rate per second")
 	ordersFilePath := flag.String("orders-file-path", "orders.json", "Path of orders file in json")
 
@@ -57,7 +57,7 @@ func LoadThenPostOrders(orderComing chan Order, ordersTotality *int) {
 		log.Fatalln(err)
 	}
 
-	var orders []Order
+	var orders []orderInfo
 
 	err = json.Unmarshal(ordersInBytes, &orders)
 	if err != nil {
@@ -70,10 +70,10 @@ func LoadThenPostOrders(orderComing chan Order, ordersTotality *int) {
 	}
 
 	// Post an empty ID order indicate all orders are posted
-	orderComing <- Order{ID: ""}
+	orderComing <- orderInfo{ID: ""}
 }
 
-func SendCourier(courierComing chan bool) {
+func sendCourier(courierComing chan bool) {
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -89,16 +89,16 @@ func SendCourier(courierComing chan bool) {
 
 func main() {
 
-	orderComing := make(chan Order)
+	orderComing := make(chan orderInfo)
 	ordersTotality := 0
-	go LoadThenPostOrders(orderComing, &ordersTotality)
+	go loadThenPostOrders(orderComing, &ordersTotality)
 
 	courierComing := make(chan bool)
-	go SendCourier(courierComing)
+	go sendCourier(courierComing)
 
 	ticker := time.NewTicker(time.Second)
 
-	var ordersOnShelves []Order
+	var ordersOnShelves []orderInfo
 
 	hotAvailable := 10
 	coldAvailable := 10
