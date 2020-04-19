@@ -3,9 +3,9 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
+	"fmt" // Monitoring info in simulation and final summary output by fmt
 	"io/ioutil"
-	"log"
+	"log" // Debug and trace info or exception output by log
 	"math"
 	"math/rand"
 	"os"
@@ -80,6 +80,7 @@ func sendCourier(courierComing chan bool) {
 	courierIntervalLower := 2
 	courierIntervalUpper := 6
 	for {
+		// In term of upper and lower bound of courier arriving interval, generate a random interval each time
 		interval := time.Duration(courierIntervalLower + rand.Intn(courierIntervalUpper-courierIntervalLower+1))
 		time.Sleep(interval * time.Second)
 
@@ -96,6 +97,7 @@ func main() {
 	courierComing := make(chan bool)
 	go sendCourier(courierComing)
 
+	// Periodicity update and check status of orders in shelves per second
 	ticker := time.NewTicker(time.Second)
 
 	var ordersOnShelves []orderInfo
@@ -120,7 +122,7 @@ func main() {
 				allOrdersPosted = true
 				break
 			}
-			// fmt.Println(order)
+
 			if order.Temp != hotTemp && order.Temp != coldTemp && order.Temp != frozenTemp {
 				log.Printf("Invalid Temp in %v\n", order)
 				break
@@ -147,6 +149,8 @@ func main() {
 			} else {
 				order.OnShelf = overflowShelf
 
+				// select nearest expired order in overflow shelf can be move to that single temp shelf, if possible
+				// or select the nearest expired order whatever temp then to discard it
 				indexMoveToSpecialShelf := -1
 				indexRemoved := -1
 				minShelfLifeToMove := math.MaxFloat64
@@ -171,9 +175,11 @@ func main() {
 				}
 
 				if indexMoveToSpecialShelf == -1 {
-					// To avoid remove one order then append another one, just replace a long-wait by new order
-					fmt.Printf("Have to discard an order because too many: %v\n", ordersOnShelves[indexRemoved])
+					fmt.Printf("Have to discard an order because lack place in shelves: %v\n", ordersOnShelves[indexRemoved])
+
+					// To avoid remove one order then append another one, just replace the nearest expired by new order
 					ordersOnShelves[indexRemoved] = order
+
 					ordersDiscardedAsTooMany++
 				} else {
 					switch ordersOnShelves[indexMoveToSpecialShelf].Temp {
@@ -191,16 +197,17 @@ func main() {
 					ordersOnShelves = append(ordersOnShelves, order)
 				}
 
-				// Whatever move an long-wait order to single-temperature from overflow shelf or have to just discard it,
+				// Whatever move the nearest expired order to single-temperature from overflow shelf or have to just discard it,
 				// overflowAvailable unchanged!!!
 			}
 
 			ordersOnShelvesMuxtex.Unlock()
 
 		case <-courierComing:
-			// fmt.Println("Courier coming!")
+
 			ordersOnShelvesMuxtex.Lock()
 
+			// Pick up nearest expired order, avoid to them expired eventually as soon as possible
 			minShelfLife := math.MaxFloat64
 			minShelfLifeIndex := -1
 			for i, order := range ordersOnShelves {
@@ -224,10 +231,12 @@ func main() {
 					overflowAvailable--
 				}
 
+				// Check it's not expired indeed
 				if ordersOnShelves[minShelfLifeIndex].ShelfLife <= 0 {
 					log.Fatalf("Expired order is delivered: %v\n", ordersOnShelves[minShelfLifeIndex])
 				}
 
+				// Remove this order from shelf
 				ordersOnShelves[minShelfLifeIndex] = ordersOnShelves[len(ordersOnShelves)-1]
 				ordersOnShelves = ordersOnShelves[:len(ordersOnShelves)-1]
 
@@ -239,10 +248,12 @@ func main() {
 			ordersOnShelvesMuxtex.Unlock()
 
 		case <-ticker.C:
-			// fmt.Println("Ticker")
+
 			ordersOnShelvesMuxtex.Lock()
 
 			if len(ordersOnShelves) > 0 {
+
+				// Update shelf life of each order in shelves, if there is expired order, discard it.
 				i := 0
 				for _, order := range ordersOnShelves {
 
@@ -264,13 +275,14 @@ func main() {
 				}
 
 				if i < len(ordersOnShelves) {
-
+					// Remove orders in slice by truncation
 					ordersOnShelves = ordersOnShelves[:i]
 				}
 
 				ordersOnShelvesMuxtex.Unlock()
 			} else if allOrdersPosted {
-				fmt.Printf("Done:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because too many: %d,\n", ordersTotality, ordersDelivered, ordersDiscardedAsExpired, ordersDiscardedAsTooMany)
+				// If all orders are posted and shelves are clear, complete current simulation
+				fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n", ordersTotality, ordersDelivered, ordersDiscardedAsExpired, ordersDiscardedAsTooMany)
 				return
 			}
 		}
