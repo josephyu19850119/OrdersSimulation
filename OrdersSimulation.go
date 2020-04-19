@@ -67,10 +67,12 @@ func main() {
 
 	orderComing := make(chan Order)
 
+	ordersTotality := 0
 	go func() {
 		for _, order := range orders {
 			time.Sleep(time.Millisecond * 500)
 			orderComing <- order
+			ordersTotality++
 		}
 
 		// Post an empty ID order indicate all orders are posted
@@ -88,6 +90,10 @@ func main() {
 
 	allOrdersPosted := false
 	var ordersOnShelvesMuxtex sync.Mutex
+
+	ordersDelivered := 0
+	ordersDiscardedAsExpired := 0
+	ordersDiscardedAsTooMany := 0
 
 	for {
 		select {
@@ -124,35 +130,44 @@ func main() {
 			} else {
 				order.OnShelf = Overflow
 
-				haveToDiscard := hotAvailable == 0 && coldAvailable == 0 && frozenAvailable == 0
-				indexToRemoveFromOverflow := -1
-				minShelfLife := math.MaxFloat64
+				indexMoveToSpecialShelf := -1
+				indexRemoved := -1
+				minShelfLifeToMove := math.MaxFloat64
+				minShelfLifeToRemove := math.MaxFloat64
 				for i, orderOnShelf := range ordersOnShelves {
-					if orderOnShelf.OnShelf == Overflow && orderOnShelf.ShelfLife < minShelfLife {
+					if orderOnShelf.OnShelf == Overflow {
 
-						if haveToDiscard ||
-							(orderOnShelf.OnShelf == Hot && hotAvailable > 0) ||
-							(orderOnShelf.OnShelf == Cold && coldAvailable > 0) ||
-							(orderOnShelf.OnShelf == Frozen && frozenAvailable > 0) {
-							indexToRemoveFromOverflow = i
-							minShelfLife = orderOnShelf.ShelfLife
+						if orderOnShelf.ShelfLife < minShelfLifeToMove {
+							if (orderOnShelf.Temp == "hot" && hotAvailable > 0) ||
+								(orderOnShelf.Temp == "cold" && coldAvailable > 0) ||
+								(orderOnShelf.Temp == "frozen" && frozenAvailable > 0) {
+								indexMoveToSpecialShelf = i
+								minShelfLifeToMove = orderOnShelf.ShelfLife
+							}
+						}
+
+						if orderOnShelf.ShelfLife < minShelfLifeToRemove {
+							indexRemoved = i
+							minShelfLifeToRemove = orderOnShelf.ShelfLife
 						}
 					}
 				}
 
-				if haveToDiscard {
+				if indexMoveToSpecialShelf == -1 {
 					// To avoid remove one order then append another one, just replace a long-wait by new order
-					ordersOnShelves[indexToRemoveFromOverflow] = order
+					fmt.Printf("Have to discard an order because too many: %v\n", ordersOnShelves[indexRemoved])
+					ordersOnShelves[indexRemoved] = order
+					ordersDiscardedAsTooMany++
 				} else {
-					switch ordersOnShelves[indexToRemoveFromOverflow].Temp {
+					switch ordersOnShelves[indexMoveToSpecialShelf].Temp {
 					case "hot":
-						ordersOnShelves[indexToRemoveFromOverflow].OnShelf = Hot
+						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = Hot
 						hotAvailable++
 					case "cold":
-						ordersOnShelves[indexToRemoveFromOverflow].OnShelf = Cold
+						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = Cold
 						coldAvailable++
 					case "frozen":
-						ordersOnShelves[indexToRemoveFromOverflow].OnShelf = Frozen
+						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = Frozen
 						frozenAvailable++
 					}
 
@@ -170,7 +185,7 @@ func main() {
 			ordersOnShelvesMuxtex.Lock()
 
 			minShelfLife := math.MaxFloat64
-			minShelfLifeIndex := 0
+			minShelfLifeIndex := -1
 			for i, order := range ordersOnShelves {
 				if order.ShelfLife < minShelfLife {
 					minShelfLife = order.ShelfLife
@@ -178,20 +193,31 @@ func main() {
 				}
 			}
 
-			fmt.Printf("Courier take out order: %v\n", ordersOnShelves[minShelfLifeIndex])
-			switch ordersOnShelves[minShelfLifeIndex].OnShelf {
-			case Hot:
-				hotAvailable--
-			case Cold:
-				coldAvailable--
-			case Frozen:
-				frozenAvailable--
-			case Overflow:
-				overflowAvailable--
-			}
+			if minShelfLifeIndex >= 0 {
 
-			ordersOnShelves[minShelfLifeIndex] = ordersOnShelves[len(ordersOnShelves)-1]
-			ordersOnShelves = ordersOnShelves[:len(ordersOnShelves)]
+				fmt.Printf("Courier take out order: %v\n", ordersOnShelves[minShelfLifeIndex])
+				switch ordersOnShelves[minShelfLifeIndex].OnShelf {
+				case Hot:
+					hotAvailable--
+				case Cold:
+					coldAvailable--
+				case Frozen:
+					frozenAvailable--
+				case Overflow:
+					overflowAvailable--
+				}
+
+				if ordersOnShelves[minShelfLifeIndex].ShelfLife <= 0 {
+					log.Fatalf("Expired order is delivered: %v\n", ordersOnShelves[minShelfLifeIndex])
+				}
+
+				ordersOnShelves[minShelfLifeIndex] = ordersOnShelves[len(ordersOnShelves)-1]
+				ordersOnShelves = ordersOnShelves[:len(ordersOnShelves)-1]
+
+				ordersDelivered++
+			} else {
+				fmt.Println("There is no order to delivery for current courier")
+			}
 
 			ordersOnShelvesMuxtex.Unlock()
 
@@ -215,6 +241,7 @@ func main() {
 						ordersOnShelves[i] = order
 						i++
 					} else {
+						ordersDiscardedAsExpired++
 						fmt.Printf("[%v] is discarded because of EXPIRE.\n", order)
 					}
 				}
@@ -226,7 +253,7 @@ func main() {
 
 				ordersOnShelvesMuxtex.Unlock()
 			} else if allOrdersPosted {
-				fmt.Println("Done")
+				fmt.Printf("Done:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because too many: %d,\n", ordersTotality, ordersDelivered, ordersDiscardedAsExpired, ordersDiscardedAsTooMany)
 				return
 			}
 		}
