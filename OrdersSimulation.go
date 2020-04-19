@@ -24,6 +24,11 @@ const (
 	coldShelf
 	frozenShelf
 	overflowShelf
+
+	numberInHot     = 10
+	numberInCold    = 10
+	numberInFrozen  = 10
+	numberInOverfow = 15
 )
 
 type orderInfo struct {
@@ -102,17 +107,17 @@ func main() {
 
 	var ordersOnShelves []orderInfo
 
-	hotAvailable := 10
-	coldAvailable := 10
-	frozenAvailable := 10
-	overflowAvailable := 15
+	hotAvailable := numberInHot
+	coldAvailable := numberInCold
+	frozenAvailable := numberInFrozen
+	overflowAvailable := numberInOverfow
 
 	allOrdersPosted := false
 	var ordersOnShelvesMuxtex sync.Mutex
 
 	ordersDelivered := 0
 	ordersDiscardedAsExpired := 0
-	ordersDiscardedAsTooMany := 0
+	ordersDiscardedAsLackPlace := 0
 
 	for {
 		select {
@@ -124,9 +129,10 @@ func main() {
 			}
 
 			if order.Temp != hotTemp && order.Temp != coldTemp && order.Temp != frozenTemp {
-				log.Printf("Invalid Temp in %v\n", order)
-				break
+				log.Fatalf("Invalid Temp in %v\n", order)
 			}
+
+			fmt.Printf("New arrival order: %v\n", order)
 
 			ordersOnShelvesMuxtex.Lock()
 
@@ -180,18 +186,18 @@ func main() {
 					// To avoid remove one order then append another one, just replace the nearest expired by new order
 					ordersOnShelves[indexRemoved] = order
 
-					ordersDiscardedAsTooMany++
+					ordersDiscardedAsLackPlace++
 				} else {
 					switch ordersOnShelves[indexMoveToSpecialShelf].Temp {
 					case hotTemp:
 						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = hotShelf
-						hotAvailable++
+						hotAvailable--
 					case coldTemp:
 						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = coldShelf
-						coldAvailable++
+						coldAvailable--
 					case frozenTemp:
 						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = frozenShelf
-						frozenAvailable++
+						frozenAvailable--
 					}
 
 					ordersOnShelves = append(ordersOnShelves, order)
@@ -200,6 +206,9 @@ func main() {
 				// Whatever move the nearest expired order to single-temperature from overflow shelf or have to just discard it,
 				// overflowAvailable unchanged!!!
 			}
+
+			fmt.Printf("Available hot shelf %d,\nAvailable cold shelf %d,\nAvailable frozen shelf %d,\nAvailable overflow shelf %d,\n",
+				hotAvailable, coldAvailable, frozenAvailable, overflowAvailable)
 
 			ordersOnShelvesMuxtex.Unlock()
 
@@ -222,13 +231,13 @@ func main() {
 				fmt.Printf("Courier take out order: %v\n", ordersOnShelves[minShelfLifeIndex])
 				switch ordersOnShelves[minShelfLifeIndex].OnShelf {
 				case hotShelf:
-					hotAvailable--
+					hotAvailable++
 				case coldShelf:
-					coldAvailable--
+					coldAvailable++
 				case frozenShelf:
-					frozenAvailable--
+					frozenAvailable++
 				case overflowShelf:
-					overflowAvailable--
+					overflowAvailable++
 				}
 
 				// Check it's not expired indeed
@@ -244,6 +253,9 @@ func main() {
 			} else {
 				fmt.Println("There is no order to delivery for current courier")
 			}
+
+			fmt.Printf("Available hot shelf %d,\nAvailable cold shelf %d,\nAvailable frozen shelf %d,\nAvailable overflow shelf %d,\n",
+				hotAvailable, coldAvailable, frozenAvailable, overflowAvailable)
 
 			ordersOnShelvesMuxtex.Unlock()
 
@@ -282,7 +294,23 @@ func main() {
 				ordersOnShelvesMuxtex.Unlock()
 			} else if allOrdersPosted {
 				// If all orders are posted and shelves are clear, complete current simulation
-				fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n", ordersTotality, ordersDelivered, ordersDiscardedAsExpired, ordersDiscardedAsTooMany)
+				fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n", ordersTotality, ordersDelivered, ordersDiscardedAsExpired, ordersDiscardedAsLackPlace)
+				fmt.Printf("Available hot shelf %d,\nAvailable cold shelf %d,\nAvailable frozen shelf %d,\nAvailable overflow shelf %d,\n",
+					hotAvailable, coldAvailable, frozenAvailable, overflowAvailable)
+
+				if hotAvailable != numberInHot {
+					log.Fatalf("hotAvailable(%d) should equal to numberInHot(%d)", hotAvailable, numberInHot)
+				}
+				if coldAvailable != numberInCold {
+					log.Fatalf("hotAvailable(%d) should equal to numberInHot(%d)", coldAvailable, numberInCold)
+				}
+				if frozenAvailable != numberInFrozen {
+					log.Fatalf("hotAvailable(%d) should equal to numberInHot(%d)", frozenAvailable, numberInFrozen)
+				}
+
+				if ordersTotality != ordersDelivered+ordersDiscardedAsExpired+ordersDiscardedAsLackPlace {
+					log.Fatalln("ordersTotality should equal to ordersDelivered + ordersDiscardedAsExpired + ordersDiscardedAsLackPlace")
+				}
 				return
 			}
 		}
