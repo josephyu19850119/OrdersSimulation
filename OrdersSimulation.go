@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -20,6 +21,15 @@ const (
 )
 
 func main() {
+	ordersPostedRate := flag.Int("orders-posted-rate", 2, "Orders are posted to kichen rate per second")
+	ordersFilePath := flag.String("orders-file-path", "orders.json", "Path of orders file in json")
+
+	flag.Parse()
+
+	log.Printf("Path of orders file: %s\n", *ordersFilePath)
+
+	postInterval := time.Duration(1000 / *ordersPostedRate)
+	log.Printf("Order posted interval: %v\n", postInterval)
 
 	type Order struct {
 		ID        string  `json:"id"`
@@ -30,7 +40,7 @@ func main() {
 		OnShelf   int
 	}
 
-	ordersFile, err := os.Open("orders.json")
+	ordersFile, err := os.Open(*ordersFilePath)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -69,8 +79,9 @@ func main() {
 
 	ordersTotality := 0
 	go func() {
+
 		for _, order := range orders {
-			time.Sleep(time.Millisecond * 500)
+			time.Sleep(time.Millisecond * postInterval)
 			orderComing <- order
 			ordersTotality++
 		}
