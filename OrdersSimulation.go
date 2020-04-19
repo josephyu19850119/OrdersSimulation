@@ -8,6 +8,7 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"sync"
 	"time"
 )
 
@@ -79,12 +80,14 @@ func main() {
 	ticker := time.NewTicker(time.Second)
 
 	var ordersOnShelves []Order
-	allOrdersPosted := false
 
 	hotAvailable := 10
 	coldAvailable := 10
 	frozenAvailable := 10
 	overflowAvailable := 15
+
+	allOrdersPosted := false
+	var ordersOnShelvesMuxtex sync.Mutex
 
 	for {
 		select {
@@ -100,6 +103,7 @@ func main() {
 				break
 			}
 			// ordersOnShelves = append(ordersOnShelves, order)
+			ordersOnShelvesMuxtex.Lock()
 
 			if order.Temp == "hot" && hotAvailable > 0 {
 				hotAvailable--
@@ -152,10 +156,14 @@ func main() {
 
 				// Whatever move an long-wait order to single-temperature from overflow shelf or have to just discard it,
 				// overflowAvailable unchanged!!!
+
+				ordersOnShelvesMuxtex.Unlock()
 			}
 
 		case <-courierComing:
 			// fmt.Println("Courier coming!")
+			ordersOnShelvesMuxtex.Lock()
+
 			minShelfLife := math.MaxFloat64
 			minShelfLifeIndex := 0
 			for i, order := range ordersOnShelves {
@@ -180,8 +188,11 @@ func main() {
 			ordersOnShelves[minShelfLifeIndex] = ordersOnShelves[len(ordersOnShelves)-1]
 			ordersOnShelves = ordersOnShelves[:len(ordersOnShelves)]
 
+			ordersOnShelvesMuxtex.Unlock()
+
 		case <-ticker.C:
 			// fmt.Println("Ticker")
+			ordersOnShelvesMuxtex.Lock()
 
 			if len(ordersOnShelves) > 0 {
 				i := 0
@@ -207,6 +218,8 @@ func main() {
 
 					ordersOnShelves = ordersOnShelves[:i]
 				}
+
+				ordersOnShelvesMuxtex.Unlock()
 			} else if allOrdersPosted {
 				fmt.Println("Done")
 				return
