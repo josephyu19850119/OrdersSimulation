@@ -16,6 +16,10 @@ import (
 type shelfType int
 
 const (
+	hotTemp    = "hot"
+	coldTemp   = "cold"
+	frozenTemp = "frozen"
+
 	hotShelf shelfType = iota
 	coldShelf
 	frozenShelf
@@ -117,22 +121,22 @@ func main() {
 				break
 			}
 			// fmt.Println(order)
-			if order.Temp != "hot" && order.Temp != "cold" && order.Temp != "frozen" {
+			if order.Temp != hotTemp && order.Temp != coldTemp && order.Temp != frozenTemp {
 				log.Printf("Invalid Temp in %v\n", order)
 				break
 			}
 
 			ordersOnShelvesMuxtex.Lock()
 
-			if order.Temp == "hot" && hotAvailable > 0 {
+			if order.Temp == hotTemp && hotAvailable > 0 {
 				hotAvailable--
 				order.OnShelf = hotShelf
 				ordersOnShelves = append(ordersOnShelves, order)
-			} else if order.Temp == "cold" && coldAvailable > 0 {
+			} else if order.Temp == coldTemp && coldAvailable > 0 {
 				coldAvailable--
 				order.OnShelf = coldShelf
 				ordersOnShelves = append(ordersOnShelves, order)
-			} else if order.Temp == "frozen" && frozenAvailable > 0 {
+			} else if order.Temp == frozenTemp && frozenAvailable > 0 {
 				frozenAvailable--
 				order.OnShelf = frozenShelf
 				ordersOnShelves = append(ordersOnShelves, order)
@@ -151,9 +155,9 @@ func main() {
 					if orderOnShelf.OnShelf == overflowShelf {
 
 						if orderOnShelf.ShelfLife < minShelfLifeToMove {
-							if (orderOnShelf.Temp == "hot" && hotAvailable > 0) ||
-								(orderOnShelf.Temp == "cold" && coldAvailable > 0) ||
-								(orderOnShelf.Temp == "frozen" && frozenAvailable > 0) {
+							if (orderOnShelf.Temp == hotTemp && hotAvailable > 0) ||
+								(orderOnShelf.Temp == coldTemp && coldAvailable > 0) ||
+								(orderOnShelf.Temp == frozenTemp && frozenAvailable > 0) {
 								indexMoveToSpecialShelf = i
 								minShelfLifeToMove = orderOnShelf.ShelfLife
 							}
@@ -173,13 +177,13 @@ func main() {
 					ordersDiscardedAsTooMany++
 				} else {
 					switch ordersOnShelves[indexMoveToSpecialShelf].Temp {
-					case "hot":
+					case hotTemp:
 						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = hotShelf
 						hotAvailable++
-					case "cold":
+					case coldTemp:
 						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = coldShelf
 						coldAvailable++
-					case "frozen":
+					case frozenTemp:
 						ordersOnShelves[indexMoveToSpecialShelf].OnShelf = frozenShelf
 						frozenAvailable++
 					}
