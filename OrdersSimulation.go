@@ -40,6 +40,11 @@ type orderInfo struct {
 	OnShelf   shelfType
 }
 
+func (order orderInfo) String() string {
+
+	return fmt.Sprintf("ID:\t\t\t%s\nName:\t\t\t%s\nRemain Shelf Life:\t%g\n", order.ID, order.Name, order.ShelfLife)
+}
+
 func loadThenPostOrders(orderComing chan orderInfo, ordersTotality *int) {
 	ordersPostedRate := flag.Int("orders-posted-rate", 2, "Orders are posted to kichen rate per second")
 	ordersFilePath := flag.String("orders-file-path", "orders.json", "Path of orders file in json")
@@ -129,10 +134,10 @@ func main() {
 			}
 
 			if order.Temp != hotTemp && order.Temp != coldTemp && order.Temp != frozenTemp {
-				log.Fatalf("Invalid Temp in %v\n", order)
+				log.Fatalf("Invalid Temp \"%s\" in order %s", order.Temp, order.ID)
 			}
 
-			fmt.Printf("New arrival order: %v\n", order)
+			fmt.Printf("New arrival order:\n%s", order.String())
 
 			ordersOnShelvesMuxtex.Lock()
 
@@ -181,7 +186,7 @@ func main() {
 				}
 
 				if indexMoveToSpecialShelf == -1 {
-					fmt.Printf("Have to discard an order because lack place in shelves: %v\n", ordersOnShelves[indexRemoved])
+					fmt.Printf("Have to discard an order because lack place in shelves:\n%s", ordersOnShelves[indexRemoved].String())
 
 					// To avoid remove one order then append another one, just replace the nearest expired by new order
 					ordersOnShelves[indexRemoved] = order
@@ -228,7 +233,7 @@ func main() {
 
 			if minShelfLifeIndex >= 0 {
 
-				fmt.Printf("Courier take out order: %v\n", ordersOnShelves[minShelfLifeIndex])
+				fmt.Printf("Courier take out order:\n%s", ordersOnShelves[minShelfLifeIndex].String())
 				switch ordersOnShelves[minShelfLifeIndex].OnShelf {
 				case hotShelf:
 					hotAvailable++
@@ -242,7 +247,7 @@ func main() {
 
 				// Check it's not expired indeed
 				if ordersOnShelves[minShelfLifeIndex].ShelfLife <= 0 {
-					log.Fatalf("Expired order is delivered: %v\n", ordersOnShelves[minShelfLifeIndex])
+					log.Fatalf("Expired order is delivered:\n%s", ordersOnShelves[minShelfLifeIndex].String())
 				}
 
 				// Remove this order from shelf
@@ -294,7 +299,7 @@ func main() {
 							overflowAvailable++
 						}
 
-						fmt.Printf("[%v] is discarded because of EXPIRE.\n", order)
+						fmt.Printf("Discard expired order\n%s", order.String())
 					}
 				}
 
