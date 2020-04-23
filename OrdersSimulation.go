@@ -282,6 +282,18 @@ func main() {
 						i++
 					} else {
 						ordersDiscardedAsExpired++
+
+						switch order.OnShelf {
+						case hotShelf:
+							hotAvailable++
+						case coldShelf:
+							coldAvailable++
+						case frozenShelf:
+							frozenAvailable++
+						case overflowShelf:
+							overflowAvailable++
+						}
+
 						fmt.Printf("[%v] is discarded because of EXPIRE.\n", order)
 					}
 				}
