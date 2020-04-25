@@ -53,7 +53,10 @@ func loadThenPostOrders(orderComing chan orderInfo, ordersTotality *int) {
 
 	log.Printf("Path of orders file: %s\n", *ordersFilePath)
 
-	postInterval := time.Duration(1000 / *ordersPostedRate)
+	postInterval, err := time.ParseDuration(fmt.Sprintf("%dms", 1000 / *ordersPostedRate))
+	if err != nil {
+		log.Fatalln(err)
+	}
 	log.Printf("Order posted interval: %v\n", postInterval)
 
 	ordersFile, err := os.Open(*ordersFilePath)
@@ -74,7 +77,7 @@ func loadThenPostOrders(orderComing chan orderInfo, ordersTotality *int) {
 		log.Fatalln(err)
 	}
 	for _, order := range orders {
-		time.Sleep(time.Millisecond * postInterval)
+		time.Sleep(postInterval)
 		orderComing <- order
 		(*ordersTotality)++
 	}
