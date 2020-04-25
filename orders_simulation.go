@@ -308,7 +308,6 @@ func main() {
 					ordersOnShelves = ordersOnShelves[:i]
 				}
 
-				ordersOnShelvesMuxtex.Unlock()
 			} else if allOrdersPosted {
 				// If all orders are posted and shelves are clear, complete current simulation
 				fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n", ordersTotality, ordersDelivered, ordersDiscardedAsExpired, ordersDiscardedAsLackPlace)
@@ -330,6 +329,7 @@ func main() {
 				}
 				return
 			}
+			ordersOnShelvesMuxtex.Unlock()
 		}
 	}
 }
