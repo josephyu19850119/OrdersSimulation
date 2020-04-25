@@ -79,8 +79,8 @@ func loadThenPostOrders(orderComing chan orderInfo, ordersTotality *int) {
 		(*ordersTotality)++
 	}
 
-	// Post an empty ID order indicate all orders are posted
-	orderComing <- orderInfo{ID: ""}
+	// Close the channel orderComing indicate all orders are posted
+	close(orderComing)
 }
 
 func sendCourier(courierComing chan bool) {
@@ -128,7 +128,7 @@ func main() {
 		select {
 		case order := <-orderComing:
 
-			if len(order.ID) == 0 {
+			if order == (orderInfo{}) {
 				allOrdersPosted = true
 				break
 			}
