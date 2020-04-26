@@ -227,6 +227,29 @@ func (kitchen *Kitchen) Run() {
 			kitchen.checkAndUpdateOrdersStatus()
 		}
 	}
+
+	if kitchen.ordersCountOnHotShelf != 0 {
+		log.Fatalf("Hot shelf should be clear, ordersCountOnHotShelf(%d) should equal to 0", kitchen.ordersCountOnHotShelf)
+	}
+	if kitchen.ordersCountOnColdShelf != 0 {
+		log.Fatalf("Cold shelf should be clear, ordersCountOnColdShelf(%d) should equal to 0", kitchen.ordersCountOnColdShelf)
+	}
+	if kitchen.ordersCountOnFrozenShelf != 0 {
+		log.Fatalf("Frozen shelf should be clear, ordersCountOnFrozenShelf(%d) should equal to 0", kitchen.ordersCountOnFrozenShelf)
+	}
+	if kitchen.ordersCountOnOverflowShelf != 0 {
+		log.Fatalf("Overflow shelf should be clear, ordersCountOnOverflowShelf(%d) should equal to 0", kitchen.ordersCountOnOverflowShelf)
+	}
+	if len(kitchen.ordersOnShelves) != 0 {
+		log.Fatalf("All orders on shelves should be clear, len(kitchen.ordersOnShelves):%d should equal to 0", kitchen.ordersCountOnOverflowShelf)
+	}
+
+	fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n",
+		kitchen.ordersTotality, kitchen.ordersDelivered, kitchen.ordersDiscardedAsExpired, kitchen.ordersDiscardedAsLackPlace)
+
+	if kitchen.ordersTotality != kitchen.ordersDelivered+kitchen.ordersDiscardedAsExpired+kitchen.ordersDiscardedAsLackPlace {
+		log.Fatalln("ordersTotality should equal to ordersDelivered + ordersDiscardedAsExpired + ordersDiscardedAsLackPlace")
+	}
 }
 
 // checkAndUpdateOrdersStatus update shelf life of each order in shelves, if there is expired order, discard it.
@@ -278,31 +301,6 @@ func (kitchen *Kitchen) checkAndUpdateOrdersStatus() {
 			kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
 	}
 	kitchen.ordersOnShelvesMuxtex.Unlock()
-}
-
-func (kitchen *Kitchen) Summary() {
-
-	fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n",
-		kitchen.ordersTotality, kitchen.ordersDelivered, kitchen.ordersDiscardedAsExpired, kitchen.ordersDiscardedAsLackPlace)
-	fmt.Printf("Count of orders on hot shelf %d,\nCount of orders on cold shelf %d,\nCount of orders on frozen shelf %d,\nCount of orders on overflow shelf %d,\n",
-		kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
-
-	if kitchen.ordersCountOnHotShelf != 0 {
-		log.Fatalf("Hot shelf should be clear, ordersCountOnHotShelf(%d) should equal to 0", kitchen.ordersCountOnHotShelf)
-	}
-	if kitchen.ordersCountOnColdShelf != 0 {
-		log.Fatalf("Cold shelf should be clear, ordersCountOnColdShelf(%d) should equal to 0", kitchen.ordersCountOnColdShelf)
-	}
-	if kitchen.ordersCountOnFrozenShelf != 0 {
-		log.Fatalf("Frozen shelf should be clear, ordersCountOnFrozenShelf(%d) should equal to 0", kitchen.ordersCountOnFrozenShelf)
-	}
-	if kitchen.ordersCountOnOverflowShelf != 0 {
-		log.Fatalf("Overflow shelf should be clear, ordersCountOnOverflowShelf(%d) should equal to 0", kitchen.ordersCountOnOverflowShelf)
-	}
-
-	if kitchen.ordersTotality != kitchen.ordersDelivered+kitchen.ordersDiscardedAsExpired+kitchen.ordersDiscardedAsLackPlace {
-		log.Fatalln("ordersTotality should equal to ordersDelivered + ordersDiscardedAsExpired + ordersDiscardedAsLackPlace")
-	}
 }
 
 // ShowShelvesStatus print orders count of each shelves and check them are expected, for monitoring status of shelves

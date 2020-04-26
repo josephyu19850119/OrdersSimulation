@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt" // Monitoring info in simulation and final summary output by fmt
-	"log" // Debug and trace info or exception output by log
+	"log" // Testing check point or exception output by log.Fatalf
 	"math/rand"
 	"time"
 )
@@ -82,5 +82,4 @@ func main() {
 	}()
 
 	kitchen.Run()
-	kitchen.Summary()
 }
