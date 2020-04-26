@@ -35,17 +35,18 @@ const (
 )
 
 type orderInfo struct {
-	ID        string  `json:"id"`
-	Name      string  `json:"name"`
-	Temp      string  `json:"temp"`
-	ShelfLife float64 `json:"shelfLife"`
-	DecayRate float64 `json:"decayRate"`
-	OnShelf   shelfType
+	ID              string  `json:"id"`
+	Name            string  `json:"name"`
+	Temp            string  `json:"temp"`
+	InitShelfLife   float64 `json:"shelfLife"`
+	RemainShelfLife float64
+	DecayRate       float64 `json:"decayRate"`
+	OnShelf         shelfType
 }
 
 func (order *orderInfo) String() string {
 
-	return fmt.Sprintf("ID:\t\t\t%s\nName:\t\t\t%s\nTemp:\t\t\t%s\nRemain Shelf Life:\t%g\n", order.ID, order.Name, order.Temp, order.ShelfLife)
+	return fmt.Sprintf("ID:\t%s\nName:\t%s\nTemp:\t%s\nValue:\t%g\n", order.ID, order.Name, order.Temp, order.RemainShelfLife/order.InitShelfLife)
 }
 
 type kitchenInfo struct {
@@ -116,19 +117,19 @@ func (kitchen *kitchenInfo) placeNewOrder(order orderInfo) {
 		for i, orderOnShelf := range kitchen.ordersOnShelves {
 			if orderOnShelf.OnShelf == overflowShelf {
 
-				if orderOnShelf.ShelfLife < minShelfLifeToMove {
+				if orderOnShelf.RemainShelfLife < minShelfLifeToMove {
 
 					if (orderOnShelf.Temp == hotTemp && kitchen.hotAvailable > 0) ||
 						(orderOnShelf.Temp == coldTemp && kitchen.coldAvailable > 0) ||
 						(orderOnShelf.Temp == frozenTemp && kitchen.frozenAvailable > 0) {
 						indexMoveToSpecialShelf = i
-						minShelfLifeToMove = orderOnShelf.ShelfLife
+						minShelfLifeToMove = orderOnShelf.RemainShelfLife
 					}
 				}
 
-				if orderOnShelf.ShelfLife < minShelfLifeToRemove {
+				if orderOnShelf.RemainShelfLife < minShelfLifeToRemove {
 					indexRemoved = i
-					minShelfLifeToRemove = orderOnShelf.ShelfLife
+					minShelfLifeToRemove = orderOnShelf.RemainShelfLife
 				}
 			}
 		}
@@ -180,8 +181,8 @@ func (kitchen *kitchenInfo) SendCourierPickupOrder() orderInfo {
 	minShelfLife := math.MaxFloat64
 	minShelfLifeIndex := -1
 	for i, order := range kitchen.ordersOnShelves {
-		if order.ShelfLife < minShelfLife {
-			minShelfLife = order.ShelfLife
+		if order.RemainShelfLife < minShelfLife {
+			minShelfLife = order.RemainShelfLife
 			minShelfLifeIndex = i
 		}
 	}
@@ -241,8 +242,8 @@ func (kitchen *kitchenInfo) checkAndUpdateOrdersStatus() {
 			shelfDecayModifier = 1
 		}
 
-		order.ShelfLife = order.ShelfLife - order.DecayRate*shelfDecayModifier
-		if order.ShelfLife > 0 {
+		order.RemainShelfLife = order.RemainShelfLife - order.DecayRate*shelfDecayModifier
+		if order.RemainShelfLife > 0 {
 			kitchen.ordersOnShelves[i] = order
 			i++
 		} else {
@@ -349,6 +350,7 @@ func main() {
 
 		for _, order := range allOrders {
 			time.Sleep(postInterval)
+			order.RemainShelfLife = order.InitShelfLife
 			kitchen.PostOrder(order)
 		}
 
@@ -367,7 +369,7 @@ func main() {
 			if pickedUpOrder != (orderInfo{}) {
 
 				// Check it's not expired indeed
-				if pickedUpOrder.ShelfLife <= 0 {
+				if pickedUpOrder.RemainShelfLife <= 0 {
 					log.Fatalf("Expired order picked!\n%s", pickedUpOrder.String())
 				}
 
