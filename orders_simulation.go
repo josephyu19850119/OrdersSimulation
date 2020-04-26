@@ -49,6 +49,8 @@ func main() {
 			time.Sleep(postInterval)
 			order.RemainShelfLife = order.InitShelfLife
 			kitchen.PostOrder(order)
+
+			kitchen.ShowShelvesStatus()
 		}
 
 		kitchen.AllOrdersArePosted()
@@ -74,6 +76,8 @@ func main() {
 			} else {
 				fmt.Println("There is no order to delivery for current courier")
 			}
+
+			kitchen.ShowShelvesStatus()
 		}
 	}()
 

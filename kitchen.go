@@ -154,9 +154,6 @@ func (kitchen *Kitchen) placeNewOrder(order Order) {
 		// ordersCountOnOverflowShelf unchanged!!!
 	}
 
-	fmt.Printf("Count of orders hot shelf %d,\nCount of orders cold shelf %d,\nCount of orders frozen shelf %d,\nCount of orders overflow shelf %d,\n",
-		kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
-
 	kitchen.ordersOnShelvesMuxtex.Unlock()
 }
 
@@ -167,9 +164,6 @@ func (kitchen *Kitchen) SendCourierPickupOrder() Order {
 	kitchen.ordersOnShelvesMuxtex.Lock()
 	defer func() {
 		kitchen.ordersOnShelvesMuxtex.Unlock()
-
-		fmt.Printf("Count of orders on hot shelf %d,\nCount of orders on cold shelf %d,\nCount of orders on frozen shelf %d,\nCount of orders on overflow shelf %d,\n",
-			kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
 	}()
 
 	// Pick up nearest expired order, avoid to them expired eventually as soon as possible
@@ -274,8 +268,15 @@ func (kitchen *Kitchen) checkAndUpdateOrdersStatus() {
 	if i < len(kitchen.ordersOnShelves) {
 		// Remove orders in slice by truncation
 		kitchen.ordersOnShelves = kitchen.ordersOnShelves[:i]
-	}
 
+		if kitchen.ordersCountOnHotShelf+kitchen.ordersCountOnColdShelf+kitchen.ordersCountOnFrozenShelf+kitchen.ordersCountOnOverflowShelf != len(kitchen.ordersOnShelves) {
+			log.Fatalf("Sum of ordersCountOnHotShelf(%d), ordersCountOnColdShelf(%d), ordersCountOnFrozenShelf(%d) and ordersCountOnOverflowShelf(%d) should equal to len of ordersOnShelves(%d)",
+				kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf, len(kitchen.ordersOnShelves))
+		}
+
+		fmt.Printf("Count of orders on hot shelf %d,\nCount of orders on cold shelf %d,\nCount of orders on frozen shelf %d,\nCount of orders on overflow shelf %d,\n",
+			kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
+	}
 	kitchen.ordersOnShelvesMuxtex.Unlock()
 }
 
@@ -302,4 +303,20 @@ func (kitchen *Kitchen) Summary() {
 	if kitchen.ordersTotality != kitchen.ordersDelivered+kitchen.ordersDiscardedAsExpired+kitchen.ordersDiscardedAsLackPlace {
 		log.Fatalln("ordersTotality should equal to ordersDelivered + ordersDiscardedAsExpired + ordersDiscardedAsLackPlace")
 	}
+}
+
+// ShowShelvesStatus print orders count of each shelves and check them are expected, for monitoring status of shelves
+func (kitchen *Kitchen) ShowShelvesStatus() {
+
+	kitchen.ordersOnShelvesMuxtex.Lock()
+
+	if kitchen.ordersCountOnHotShelf+kitchen.ordersCountOnColdShelf+kitchen.ordersCountOnFrozenShelf+kitchen.ordersCountOnOverflowShelf != len(kitchen.ordersOnShelves) {
+		log.Fatalf("Sum of ordersCountOnHotShelf(%d), ordersCountOnColdShelf(%d), ordersCountOnFrozenShelf(%d) and ordersCountOnOverflowShelf(%d) should equal to len of ordersOnShelves(%d)",
+			kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf, len(kitchen.ordersOnShelves))
+	}
+
+	fmt.Printf("Count of orders on hot shelf %d,\nCount of orders on cold shelf %d,\nCount of orders on frozen shelf %d,\nCount of orders on overflow shelf %d,\n",
+		kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
+
+	kitchen.ordersOnShelvesMuxtex.Unlock()
 }
