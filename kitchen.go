@@ -44,6 +44,14 @@ type Kitchen struct {
 
 func (kitchen *Kitchen) PostOrder(order Order) {
 
+	if order.InitShelfLife <= 0 {
+		log.Fatalf("Invalid Shelf Life in order:\n%s", order.String())
+	}
+
+	if order.DecayRate <= 0 {
+		log.Fatalf("Invalid Decay Rate in order:\n%s", order.String())
+	}
+
 	if order.Temp != hotTemp && order.Temp != coldTemp && order.Temp != frozenTemp {
 		log.Fatalf("Invalid Temp in order:\n%s", order.String())
 	}
