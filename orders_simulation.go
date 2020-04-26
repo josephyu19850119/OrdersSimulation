@@ -31,7 +31,7 @@ func main() {
 
 	allOrders := loadOrders(*ordersFilePath)
 
-	kitchen := kitchenInfo{
+	kitchen := Kitchen{
 		ordersCountOnHotShelf:      0,
 		ordersCountOnColdShelf:     0,
 		ordersCountOnFrozenShelf:   0,
@@ -41,7 +41,7 @@ func main() {
 		ordersDiscardedAsExpired:   0,
 		ordersTotality:             0,
 		allOrdersPosted:            false,
-		orderComing:                make(chan orderInfo)}
+		orderComing:                make(chan Order)}
 
 	go func() {
 
@@ -63,7 +63,7 @@ func main() {
 			time.Sleep(interval * time.Second)
 
 			pickedUpOrder := kitchen.SendCourierPickupOrder()
-			if pickedUpOrder != (orderInfo{}) {
+			if pickedUpOrder != (Order{}) {
 
 				// Check it's not expired indeed
 				if pickedUpOrder.RemainShelfLife <= 0 {

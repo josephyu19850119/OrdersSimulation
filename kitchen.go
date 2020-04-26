@@ -22,8 +22,8 @@ const (
 	availableOnOverflowShelf = 15
 )
 
-type kitchenInfo struct {
-	ordersOnShelves []orderInfo
+type Kitchen struct {
+	ordersOnShelves []Order
 
 	ordersCountOnHotShelf      int
 	ordersCountOnColdShelf     int
@@ -39,10 +39,10 @@ type kitchenInfo struct {
 	allOrdersDelivered    bool
 	ordersOnShelvesMuxtex sync.Mutex
 
-	orderComing chan orderInfo
+	orderComing chan Order
 }
 
-func (kitchen *kitchenInfo) PostOrder(order orderInfo) {
+func (kitchen *Kitchen) PostOrder(order Order) {
 
 	if order.Temp != hotTemp && order.Temp != coldTemp && order.Temp != frozenTemp {
 		log.Fatalf("Invalid Temp in order:\n%s", order.String())
@@ -54,11 +54,11 @@ func (kitchen *kitchenInfo) PostOrder(order orderInfo) {
 	kitchen.orderComing <- order
 }
 
-func (kitchen *kitchenInfo) AllOrdersArePosted() {
+func (kitchen *Kitchen) AllOrdersArePosted() {
 	kitchen.allOrdersPosted = true
 }
 
-func (kitchen *kitchenInfo) placeNewOrder(order orderInfo) {
+func (kitchen *Kitchen) placeNewOrder(order Order) {
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
 
@@ -144,7 +144,7 @@ func (kitchen *kitchenInfo) placeNewOrder(order orderInfo) {
 	kitchen.ordersOnShelvesMuxtex.Unlock()
 }
 
-func (kitchen *kitchenInfo) SendCourierPickupOrder() orderInfo {
+func (kitchen *Kitchen) SendCourierPickupOrder() Order {
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
 	defer func() {
@@ -188,11 +188,11 @@ func (kitchen *kitchenInfo) SendCourierPickupOrder() orderInfo {
 
 	} else {
 		// return a zero value order, mean that there is no order to fetch.
-		return orderInfo{}
+		return Order{}
 	}
 }
 
-func (kitchen *kitchenInfo) Run() {
+func (kitchen *Kitchen) Run() {
 
 	ticker := time.NewTicker(time.Second)
 	for !kitchen.allOrdersPosted || len(kitchen.ordersOnShelves) > 0 {
@@ -206,7 +206,7 @@ func (kitchen *kitchenInfo) Run() {
 	}
 }
 
-func (kitchen *kitchenInfo) checkAndUpdateOrdersStatus() {
+func (kitchen *Kitchen) checkAndUpdateOrdersStatus() {
 	// Update shelf life of each order in shelves, if there is expired order, discard it.
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
@@ -250,7 +250,7 @@ func (kitchen *kitchenInfo) checkAndUpdateOrdersStatus() {
 	kitchen.ordersOnShelvesMuxtex.Unlock()
 }
 
-func (kitchen *kitchenInfo) Summary() {
+func (kitchen *Kitchen) Summary() {
 
 	fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n",
 		kitchen.ordersTotality, kitchen.ordersDelivered, kitchen.ordersDiscardedAsExpired, kitchen.ordersDiscardedAsLackPlace)
