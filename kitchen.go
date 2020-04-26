@@ -16,19 +16,19 @@ const (
 	frozenShelf
 	overflowShelf
 
-	numberInHot     = 10
-	numberInCold    = 10
-	numberInFrozen  = 10
-	numberInOverfow = 15
+	availableOnHotShelf      = 10
+	availableOnColdShelf     = 10
+	availableOnFrozenShelf   = 10
+	availableOnOverflowShelf = 15
 )
 
 type kitchenInfo struct {
 	ordersOnShelves []orderInfo
 
-	hotAvailable      int
-	coldAvailable     int
-	frozenAvailable   int
-	overflowAvailable int
+	ordersCountOnHotShelf      int
+	ordersCountOnColdShelf     int
+	ordersCountOnFrozenShelf   int
+	ordersCountOnOverflowShelf int
 
 	ordersDelivered            int
 	ordersDiscardedAsExpired   int
@@ -62,20 +62,20 @@ func (kitchen *kitchenInfo) placeNewOrder(order orderInfo) {
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
 
-	if order.Temp == hotTemp && kitchen.hotAvailable > 0 {
-		kitchen.hotAvailable--
+	if order.Temp == hotTemp && kitchen.ordersCountOnHotShelf < availableOnHotShelf {
+		kitchen.ordersCountOnHotShelf++
 		order.OnShelf = hotShelf
 		kitchen.ordersOnShelves = append(kitchen.ordersOnShelves, order)
-	} else if order.Temp == coldTemp && kitchen.coldAvailable > 0 {
-		kitchen.coldAvailable--
+	} else if order.Temp == coldTemp && kitchen.ordersCountOnColdShelf < availableOnColdShelf {
+		kitchen.ordersCountOnColdShelf++
 		order.OnShelf = coldShelf
 		kitchen.ordersOnShelves = append(kitchen.ordersOnShelves, order)
-	} else if order.Temp == frozenTemp && kitchen.frozenAvailable > 0 {
-		kitchen.frozenAvailable--
+	} else if order.Temp == frozenTemp && kitchen.ordersCountOnFrozenShelf < availableOnFrozenShelf {
+		kitchen.ordersCountOnFrozenShelf++
 		order.OnShelf = frozenShelf
 		kitchen.ordersOnShelves = append(kitchen.ordersOnShelves, order)
-	} else if kitchen.overflowAvailable > 0 {
-		kitchen.overflowAvailable--
+	} else if kitchen.ordersCountOnOverflowShelf < availableOnOverflowShelf {
+		kitchen.ordersCountOnOverflowShelf++
 		order.OnShelf = overflowShelf
 		kitchen.ordersOnShelves = append(kitchen.ordersOnShelves, order)
 	} else {
@@ -92,9 +92,9 @@ func (kitchen *kitchenInfo) placeNewOrder(order orderInfo) {
 
 				if orderOnShelf.RemainShelfLife < minShelfLifeToMove {
 
-					if (orderOnShelf.Temp == hotTemp && kitchen.hotAvailable > 0) ||
-						(orderOnShelf.Temp == coldTemp && kitchen.coldAvailable > 0) ||
-						(orderOnShelf.Temp == frozenTemp && kitchen.frozenAvailable > 0) {
+					if (orderOnShelf.Temp == hotTemp && kitchen.ordersCountOnHotShelf < availableOnHotShelf) ||
+						(orderOnShelf.Temp == coldTemp && kitchen.ordersCountOnColdShelf < availableOnColdShelf) ||
+						(orderOnShelf.Temp == frozenTemp && kitchen.ordersCountOnFrozenShelf < availableOnFrozenShelf) {
 						indexMoveToSpecialShelf = i
 						minShelfLifeToMove = orderOnShelf.RemainShelfLife
 					}
@@ -122,24 +122,24 @@ func (kitchen *kitchenInfo) placeNewOrder(order orderInfo) {
 			switch kitchen.ordersOnShelves[indexMoveToSpecialShelf].Temp {
 			case hotTemp:
 				kitchen.ordersOnShelves[indexMoveToSpecialShelf].OnShelf = hotShelf
-				kitchen.hotAvailable--
+				kitchen.ordersCountOnHotShelf++
 			case coldTemp:
 				kitchen.ordersOnShelves[indexMoveToSpecialShelf].OnShelf = coldShelf
-				kitchen.coldAvailable--
+				kitchen.ordersCountOnColdShelf++
 			case frozenTemp:
 				kitchen.ordersOnShelves[indexMoveToSpecialShelf].OnShelf = frozenShelf
-				kitchen.frozenAvailable--
+				kitchen.ordersCountOnFrozenShelf++
 			}
 
 			kitchen.ordersOnShelves = append(kitchen.ordersOnShelves, order)
 		}
 
 		// Whatever move the nearest expired order to single-temperature from overflow shelf or have to just discard it,
-		// overflowAvailable unchanged!!!
+		// ordersCountOnOverflowShelf unchanged!!!
 	}
 
-	fmt.Printf("Available hot shelf %d,\nAvailable cold shelf %d,\nAvailable frozen shelf %d,\nAvailable overflow shelf %d,\n",
-		kitchen.hotAvailable, kitchen.coldAvailable, kitchen.frozenAvailable, kitchen.overflowAvailable)
+	fmt.Printf("Count of orders hot shelf %d,\nCount of orders cold shelf %d,\nCount of orders frozen shelf %d,\nCount of orders overflow shelf %d,\n",
+		kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
 
 	kitchen.ordersOnShelvesMuxtex.Unlock()
 }
@@ -150,8 +150,8 @@ func (kitchen *kitchenInfo) SendCourierPickupOrder() orderInfo {
 	defer func() {
 		kitchen.ordersOnShelvesMuxtex.Unlock()
 
-		fmt.Printf("Available hot shelf %d,\nAvailable cold shelf %d,\nAvailable frozen shelf %d,\nAvailable overflow shelf %d,\n",
-			kitchen.hotAvailable, kitchen.coldAvailable, kitchen.frozenAvailable, kitchen.overflowAvailable)
+		fmt.Printf("Count of orders on hot shelf %d,\nCount of orders on cold shelf %d,\nCount of orders on frozen shelf %d,\nCount of orders on overflow shelf %d,\n",
+			kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
 	}()
 
 	// Pick up nearest expired order, avoid to them expired eventually as soon as possible
@@ -168,13 +168,13 @@ func (kitchen *kitchenInfo) SendCourierPickupOrder() orderInfo {
 
 		switch kitchen.ordersOnShelves[minShelfLifeIndex].OnShelf {
 		case hotShelf:
-			kitchen.hotAvailable++
+			kitchen.ordersCountOnHotShelf--
 		case coldShelf:
-			kitchen.coldAvailable++
+			kitchen.ordersCountOnColdShelf--
 		case frozenShelf:
-			kitchen.frozenAvailable++
+			kitchen.ordersCountOnFrozenShelf--
 		case overflowShelf:
-			kitchen.overflowAvailable++
+			kitchen.ordersCountOnOverflowShelf--
 		}
 
 		pickedUpOrder := kitchen.ordersOnShelves[minShelfLifeIndex]
@@ -229,13 +229,13 @@ func (kitchen *kitchenInfo) checkAndUpdateOrdersStatus() {
 
 			switch order.OnShelf {
 			case hotShelf:
-				kitchen.hotAvailable++
+				kitchen.ordersCountOnHotShelf--
 			case coldShelf:
-				kitchen.coldAvailable++
+				kitchen.ordersCountOnColdShelf--
 			case frozenShelf:
-				kitchen.frozenAvailable++
+				kitchen.ordersCountOnFrozenShelf--
 			case overflowShelf:
-				kitchen.overflowAvailable++
+				kitchen.ordersCountOnOverflowShelf--
 			}
 
 			fmt.Printf("Discard expired order\n%s", order.String())
@@ -254,20 +254,20 @@ func (kitchen *kitchenInfo) Summary() {
 
 	fmt.Printf("Summary:\nTotality orders: %d,\nDelivered orders: %d,\nExpired orders: %d,\nDiscarded orders because lack place in shelves: %d.\n",
 		kitchen.ordersTotality, kitchen.ordersDelivered, kitchen.ordersDiscardedAsExpired, kitchen.ordersDiscardedAsLackPlace)
-	fmt.Printf("Available hot shelf %d,\nAvailable cold shelf %d,\nAvailable frozen shelf %d,\nAvailable overflow shelf %d,\n",
-		kitchen.hotAvailable, kitchen.coldAvailable, kitchen.frozenAvailable, kitchen.overflowAvailable)
+	fmt.Printf("Count of orders on hot shelf %d,\nCount of orders on cold shelf %d,\nCount of orders on frozen shelf %d,\nCount of orders on overflow shelf %d,\n",
+		kitchen.ordersCountOnHotShelf, kitchen.ordersCountOnColdShelf, kitchen.ordersCountOnFrozenShelf, kitchen.ordersCountOnOverflowShelf)
 
-	if kitchen.hotAvailable != numberInHot {
-		log.Fatalf("hotAvailable(%d) should equal to numberInHot(%d)", kitchen.hotAvailable, numberInHot)
+	if kitchen.ordersCountOnHotShelf != 0 {
+		log.Fatalf("Hot shelf should be clear, ordersCountOnHotShelf(%d) should equal to 0", kitchen.ordersCountOnHotShelf)
 	}
-	if kitchen.coldAvailable != numberInCold {
-		log.Fatalf("coldAvailable(%d) should equal to numberInCold(%d)", kitchen.coldAvailable, numberInCold)
+	if kitchen.ordersCountOnColdShelf != 0 {
+		log.Fatalf("Cold shelf should be clear, ordersCountOnColdShelf(%d) should equal to 0", kitchen.ordersCountOnColdShelf)
 	}
-	if kitchen.frozenAvailable != numberInFrozen {
-		log.Fatalf("frozenAvailable(%d) should equal to numberInFrozen(%d)", kitchen.frozenAvailable, numberInFrozen)
+	if kitchen.ordersCountOnFrozenShelf != 0 {
+		log.Fatalf("Frozen shelf should be clear, ordersCountOnFrozenShelf(%d) should equal to 0", kitchen.ordersCountOnFrozenShelf)
 	}
-	if kitchen.overflowAvailable != numberInOverfow {
-		log.Fatalf("overflowAvailable(%d) should equal to numberInOverfow(%d)", kitchen.overflowAvailable, numberInOverfow)
+	if kitchen.ordersCountOnOverflowShelf != 0 {
+		log.Fatalf("Overflow shelf should be clear, ordersCountOnOverflowShelf(%d) should equal to 0", kitchen.ordersCountOnOverflowShelf)
 	}
 
 	if kitchen.ordersTotality != kitchen.ordersDelivered+kitchen.ordersDiscardedAsExpired+kitchen.ordersDiscardedAsLackPlace {

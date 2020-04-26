@@ -32,10 +32,10 @@ func main() {
 	allOrders := loadOrders(*ordersFilePath)
 
 	kitchen := kitchenInfo{
-		hotAvailable:               numberInHot,
-		coldAvailable:              numberInCold,
-		frozenAvailable:            numberInFrozen,
-		overflowAvailable:          numberInOverfow,
+		ordersCountOnHotShelf:      0,
+		ordersCountOnColdShelf:     0,
+		ordersCountOnFrozenShelf:   0,
+		ordersCountOnOverflowShelf: 0,
 		ordersDelivered:            0,
 		ordersDiscardedAsLackPlace: 0,
 		ordersDiscardedAsExpired:   0,
