@@ -48,19 +48,20 @@ func (kitchen *Kitchen) PostOrder(order Order) {
 		log.Fatalf("Invalid Temp in order:\n%s", order.String())
 	}
 
-	fmt.Printf("New arrival order:\n%s", order.String())
-
-	kitchen.ordersTotality++
 	kitchen.orderComing <- order
 }
 
 func (kitchen *Kitchen) AllOrdersArePosted() {
-	kitchen.allOrdersPosted = true
+
+	close(kitchen.orderComing)
 }
 
 func (kitchen *Kitchen) placeNewOrder(order Order) {
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
+
+	fmt.Printf("New arrival order:\n%s", order.String())
+	kitchen.ordersTotality++
 
 	if order.Temp == hotTemp && kitchen.ordersCountOnHotShelf < availableOnHotShelf {
 		kitchen.ordersCountOnHotShelf++
@@ -199,7 +200,11 @@ func (kitchen *Kitchen) Run() {
 
 		select {
 		case newOrder := <-kitchen.orderComing:
-			kitchen.placeNewOrder(newOrder)
+			if newOrder == (Order{}) {
+				kitchen.allOrdersPosted = true
+			} else {
+				kitchen.placeNewOrder(newOrder)
+			}
 		case <-ticker.C:
 			kitchen.checkAndUpdateOrdersStatus()
 		}
