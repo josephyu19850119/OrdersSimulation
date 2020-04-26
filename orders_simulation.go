@@ -15,14 +15,14 @@ const (
 
 func main() {
 
-	ordersPostedRate := flag.Int("orders-posted-rate", 2, "Orders are posted to kichen rate per second")
+	ordersPostedRatePerSecond := flag.Int("orders-posted-rate-per-second", 2, "Orders are posted to kichen rate per second")
 	ordersFilePath := flag.String("orders-file-path", "orders.json", "Path of orders file in json")
 
 	flag.Parse()
 
 	log.Printf("Path of orders file: %s\n", *ordersFilePath)
 
-	postInterval, err := time.ParseDuration(fmt.Sprintf("%dms", 1000 / *ordersPostedRate))
+	postInterval, err := time.ParseDuration(fmt.Sprintf("%dms", 1000 / *ordersPostedRatePerSecond))
 	if err != nil {
 		log.Fatalln(err)
 	}
