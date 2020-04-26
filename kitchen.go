@@ -94,24 +94,26 @@ func (kitchen *Kitchen) placeNewOrder(order Order) {
 		// or select the nearest expired order whatever temp then to discard it
 		indexMoveToSpecialShelf := -1
 		indexRemoved := -1
-		minShelfLifeToMove := math.MaxFloat64
-		minShelfLifeToRemove := math.MaxFloat64
+		minRemainShelfLifeTimeToMove := math.MaxFloat64
+		minRemainShelfLifeTimeToRemove := math.MaxFloat64
 		for i, orderOnShelf := range kitchen.ordersOnShelves {
 			if orderOnShelf.OnShelf == overflowShelf {
 
-				if orderOnShelf.RemainShelfLife < minShelfLifeToMove {
+				remainShelfLifeTime := orderOnShelf.RemainShelfLife / orderOnShelf.DecayRate / 2
+
+				if remainShelfLifeTime < minRemainShelfLifeTimeToMove {
 
 					if (orderOnShelf.Temp == hotTemp && kitchen.ordersCountOnHotShelf < availableOnHotShelf) ||
 						(orderOnShelf.Temp == coldTemp && kitchen.ordersCountOnColdShelf < availableOnColdShelf) ||
 						(orderOnShelf.Temp == frozenTemp && kitchen.ordersCountOnFrozenShelf < availableOnFrozenShelf) {
 						indexMoveToSpecialShelf = i
-						minShelfLifeToMove = orderOnShelf.RemainShelfLife
+						minRemainShelfLifeTimeToMove = remainShelfLifeTime
 					}
 				}
 
-				if orderOnShelf.RemainShelfLife < minShelfLifeToRemove {
+				if remainShelfLifeTime < minRemainShelfLifeTimeToRemove {
 					indexRemoved = i
-					minShelfLifeToRemove = orderOnShelf.RemainShelfLife
+					minRemainShelfLifeTimeToRemove = remainShelfLifeTime
 				}
 			}
 		}
@@ -164,18 +166,24 @@ func (kitchen *Kitchen) SendCourierPickupOrder() Order {
 	}()
 
 	// Pick up nearest expired order, avoid to them expired eventually as soon as possible
-	minShelfLife := math.MaxFloat64
-	minShelfLifeIndex := -1
+	minRemainShelfLifeTime := math.MaxFloat64
+	minRemainShelfLifeTimeIndex := -1
 	for i, order := range kitchen.ordersOnShelves {
-		if order.RemainShelfLife < minShelfLife {
-			minShelfLife = order.RemainShelfLife
-			minShelfLifeIndex = i
+		var remainShelfLifeTime float64
+		if order.OnShelf == overflowShelf {
+			remainShelfLifeTime = order.RemainShelfLife / order.DecayRate / 2
+		} else {
+			remainShelfLifeTime = order.RemainShelfLife / order.DecayRate / 1
+		}
+		if remainShelfLifeTime < minRemainShelfLifeTime {
+			minRemainShelfLifeTime = remainShelfLifeTime
+			minRemainShelfLifeTimeIndex = i
 		}
 	}
 
-	if minShelfLifeIndex >= 0 {
+	if minRemainShelfLifeTimeIndex >= 0 {
 
-		switch kitchen.ordersOnShelves[minShelfLifeIndex].OnShelf {
+		switch kitchen.ordersOnShelves[minRemainShelfLifeTimeIndex].OnShelf {
 		case hotShelf:
 			kitchen.ordersCountOnHotShelf--
 		case coldShelf:
@@ -186,10 +194,10 @@ func (kitchen *Kitchen) SendCourierPickupOrder() Order {
 			kitchen.ordersCountOnOverflowShelf--
 		}
 
-		pickedUpOrder := kitchen.ordersOnShelves[minShelfLifeIndex]
+		pickedUpOrder := kitchen.ordersOnShelves[minRemainShelfLifeTimeIndex]
 
 		// Remove this order from shelf
-		kitchen.ordersOnShelves[minShelfLifeIndex] = kitchen.ordersOnShelves[len(kitchen.ordersOnShelves)-1]
+		kitchen.ordersOnShelves[minRemainShelfLifeTimeIndex] = kitchen.ordersOnShelves[len(kitchen.ordersOnShelves)-1]
 		kitchen.ordersOnShelves = kitchen.ordersOnShelves[:len(kitchen.ordersOnShelves)-1]
 
 		kitchen.ordersDelivered++
