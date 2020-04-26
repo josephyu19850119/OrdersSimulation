@@ -261,10 +261,13 @@ func (kitchen *kitchenInfo) Summary() {
 		log.Fatalf("hotAvailable(%d) should equal to numberInHot(%d)", kitchen.hotAvailable, numberInHot)
 	}
 	if kitchen.coldAvailable != numberInCold {
-		log.Fatalf("hotAvailable(%d) should equal to numberInHot(%d)", kitchen.coldAvailable, numberInCold)
+		log.Fatalf("coldAvailable(%d) should equal to numberInCold(%d)", kitchen.coldAvailable, numberInCold)
 	}
 	if kitchen.frozenAvailable != numberInFrozen {
-		log.Fatalf("hotAvailable(%d) should equal to numberInHot(%d)", kitchen.frozenAvailable, numberInFrozen)
+		log.Fatalf("frozenAvailable(%d) should equal to numberInFrozen(%d)", kitchen.frozenAvailable, numberInFrozen)
+	}
+	if kitchen.overflowAvailable != numberInOverfow {
+		log.Fatalf("overflowAvailable(%d) should equal to numberInOverfow(%d)", kitchen.overflowAvailable, numberInOverfow)
 	}
 
 	if kitchen.ordersTotality != kitchen.ordersDelivered+kitchen.ordersDiscardedAsExpired+kitchen.ordersDiscardedAsLackPlace {
