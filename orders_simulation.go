@@ -29,7 +29,7 @@ func main() {
 
 	log.Printf("Order posted interval: %v\n", postInterval)
 
-	allOrders := loadOrders(*ordersFilePath)
+	allOrders := LoadOrders(*ordersFilePath)
 
 	kitchen := Kitchen{
 		ordersCountOnHotShelf:      0,

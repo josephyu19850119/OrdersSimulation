@@ -14,6 +14,8 @@ const (
 	frozenTemp = "frozen"
 )
 
+// Order hold an order all info, include const data member ID, Name, Temp, InitShelfLife, DecayRate
+// and running time variable data member RemainShelfLife, On which Shelf
 type Order struct {
 	ID              string  `json:"id"`
 	Name            string  `json:"name"`
@@ -24,12 +26,14 @@ type Order struct {
 	OnShelf         shelfType
 }
 
+// Orders.String print Order's info as string
 func (order *Order) String() string {
 
 	return fmt.Sprintf("ID:\t%s\nName:\t%s\nTemp:\t%s\nValue:\t%g\n", order.ID, order.Name, order.Temp, order.RemainShelfLife/order.InitShelfLife)
 }
 
-func loadOrders(ordersFilePath string) []Order {
+// LoadOrders load orders from file path ordersFilePath
+func LoadOrders(ordersFilePath string) []Order {
 
 	ordersFile, err := os.Open(ordersFilePath)
 	defer ordersFile.Close()

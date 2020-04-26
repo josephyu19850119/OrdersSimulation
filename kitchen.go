@@ -22,6 +22,8 @@ const (
 	availableOnOverflowShelf = 15
 )
 
+// Kitchen hold a kitchen's all shelves and posted orders info
+// And keep track of numbers of orders for delivered, discarded because of expired or no space
 type Kitchen struct {
 	ordersOnShelves []Order
 
@@ -42,6 +44,7 @@ type Kitchen struct {
 	orderComing chan Order
 }
 
+// PostOrder post a new order to the kitchen by argument
 func (kitchen *Kitchen) PostOrder(order Order) {
 
 	if order.InitShelfLife <= 0 {
@@ -59,11 +62,13 @@ func (kitchen *Kitchen) PostOrder(order Order) {
 	kitchen.orderComing <- order
 }
 
+// AllOrdersArePosted notify kitchen all orders have been posted
 func (kitchen *Kitchen) AllOrdersArePosted() {
 
 	close(kitchen.orderComing)
 }
 
+// placeNewOrder select a place for new order
 func (kitchen *Kitchen) placeNewOrder(order Order) {
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
@@ -155,6 +160,8 @@ func (kitchen *Kitchen) placeNewOrder(order Order) {
 	kitchen.ordersOnShelvesMuxtex.Unlock()
 }
 
+// SendCourierPickupOrder send a courier to fetch order from kitchen
+// Retrun picked up order, if retrun a zero value struct Order, mean that thers is no order wait to pick up in kitchen
 func (kitchen *Kitchen) SendCourierPickupOrder() Order {
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
@@ -209,6 +216,7 @@ func (kitchen *Kitchen) SendCourierPickupOrder() Order {
 	}
 }
 
+// Run let the kitchen start to receive order and courier, and periodic update and check status of orders on shelves
 func (kitchen *Kitchen) Run() {
 
 	ticker := time.NewTicker(time.Second)
@@ -227,8 +235,8 @@ func (kitchen *Kitchen) Run() {
 	}
 }
 
+// checkAndUpdateOrdersStatus update shelf life of each order in shelves, if there is expired order, discard it.
 func (kitchen *Kitchen) checkAndUpdateOrdersStatus() {
-	// Update shelf life of each order in shelves, if there is expired order, discard it.
 
 	kitchen.ordersOnShelvesMuxtex.Lock()
 	i := 0
