@@ -1,3 +1,5 @@
+Product requirements document in Orders_Simulation.pdf
+
 orders_simulation is built by Go.
 
 In environment with Go, you can run it by "go run orders_simulation.go order.go kitchen.go", along with test data "orders.json" in same directory, or build it at first by run "go build" in the directory then run built bin program.
